@@ -83,18 +83,14 @@ public class OwlReporterPublisher extends Recorder {
         testRun.put("testSuite", testSuite);
 
         Long testRunId = null;
-        FilePath workspace = build.getWorkspace();
-        String workspaceDir = "";
-        if (workspace != null)
-            workspaceDir = workspace.toString();
 
         try {
             testRunId = owlHttpClient.createTestRun(testRun.toString());
 
-            String[] files = getResultFiles(workspaceDir, getFiles());
+            String[] files = getResultFiles(getFiles());
 
             for (String file : files) {
-                File xmlFile = new File(workspaceDir + "/" + file);
+                File xmlFile = new File(file);
                 owlHttpClient.uploadXml(xmlFile, testRunId);
             }
 
@@ -108,11 +104,10 @@ public class OwlReporterPublisher extends Recorder {
         return true;
     }
 
-    public String[] getResultFiles(String baseDir, String path) {
+    public String[] getResultFiles(String path) {
         DirectoryScanner scanner = new DirectoryScanner();
 
         scanner.setIncludes(new String[]{path});
-        scanner.setBasedir(baseDir);
         scanner.setCaseSensitive(false);
         scanner.scan();
 
