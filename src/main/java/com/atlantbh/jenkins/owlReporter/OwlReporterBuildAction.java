@@ -5,7 +5,7 @@ import hudson.model.Action;
 
 public class OwlReporterBuildAction implements Action {
     private final static String DISPLAY_NAME = "Owl report";
-    private final static String ICON_FILE_NAME = "/plugin/owlPublisher/img/owl.png";
+    private final static String ICON_FILE_NAME = "/plugin/owlReporter/img/owl.png";
     private final static String TEST_RUN_URI = "/test-runs/%d/test-cases";
 
     private AbstractBuild<?, ?> build;
