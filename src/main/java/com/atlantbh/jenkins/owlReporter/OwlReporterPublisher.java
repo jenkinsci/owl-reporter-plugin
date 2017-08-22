@@ -1,13 +1,15 @@
 package com.atlantbh.jenkins.owlReporter;
+import com.atlantbh.jenkins.owlReporter.model.TestRun;
+import com.atlantbh.jenkins.owlReporter.model.TestSuite;
 import com.atlantbh.jenkins.owlReporter.utils.OwlHttpClient;
+import com.google.gson.Gson;
 import hudson.Launcher;
 import hudson.Extension;
-import hudson.FilePath;
 import hudson.model.*;
 import hudson.tasks.*;
 import hudson.util.FormValidation;
-import net.sf.json.JSONObject;
 import org.apache.tools.ant.DirectoryScanner;
+import net.sf.json.JSONObject;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.QueryParameter;
@@ -33,21 +35,18 @@ import java.io.IOException;
  * @author Kohsuke Kawaguchi
  */
 public class OwlReporterPublisher extends Recorder {
-
-    private final static String GIT_HASH_KEY = "gitHash";
-    private final static String GIT_BRANCH_KEY = "gitBranch";
     private final static String GIT_COMMIT_ENV = "GIT_COMMIT";
     private final static String GIT_BRANCH_ENV = "GIT_BRANCH";
 
     private final String files;
-    private final Long suiteId;
+    private final String suiteName;
     private final String owlUrl;
 
     // Fields in config.jelly must match the parameter names in the "DataBoundConstructor"
     @DataBoundConstructor
-    public OwlReporterPublisher(String files, Long suiteId, String owlUrl) {
+    public OwlReporterPublisher(String files, String suiteName, String owlUrl) {
         this.files = files;
-        this.suiteId = suiteId;
+        this.suiteName = suiteName;
         this.owlUrl = owlUrl;
     }
 
@@ -57,8 +56,8 @@ public class OwlReporterPublisher extends Recorder {
     public String getFiles() {
         return files;
     }
-    public Long getSuiteId() {
-        return suiteId;
+    public String getSuiteName() {
+        return suiteName;
     }
     public String getOwlUrl() {
         return owlUrl;
@@ -67,44 +66,53 @@ public class OwlReporterPublisher extends Recorder {
     @Override
     public boolean perform(AbstractBuild build, Launcher launcher, BuildListener listener) {
         OwlHttpClient owlHttpClient = new OwlHttpClient(getOwlUrl());
-
-        JSONObject testRun = new JSONObject();
-        JSONObject testSuite = new JSONObject();
         try {
-            testRun.put(GIT_HASH_KEY, build.getEnvironment(listener).get(GIT_COMMIT_ENV));
-            testRun.put(GIT_BRANCH_KEY, build.getEnvironment(listener).get(GIT_BRANCH_ENV));
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        testSuite.put("id", getSuiteId());
-        testRun.put("build", build.number);
-        testRun.put("testSuite", testSuite);
+            Long suiteId = owlHttpClient.getTestSuiteId(getSuiteName());
 
-        Long testRunId = null;
-
-        try {
-            testRunId = owlHttpClient.createTestRun(testRun.toString());
-
-            String[] files = getResultFiles(getFiles());
-
-            for (String file : files) {
-                File xmlFile = new File(file);
-                owlHttpClient.uploadXml(xmlFile, testRunId);
+            if (suiteId == null) {
+                TestSuite newTestSuite = new TestSuite();
+                newTestSuite.setName(suiteName);
+                Gson gson = new Gson();
+                suiteId = owlHttpClient.createTestSuite(gson.toJson(newTestSuite));
             }
 
+
+            try {
+                String gitHash = build.getEnvironment(listener).get(GIT_COMMIT_ENV);
+                String gitBranch = build.getEnvironment(listener).get(GIT_BRANCH_ENV);
+
+                TestSuite testSuite = new TestSuite(suiteName, suiteId);
+                TestRun testRun = new TestRun(0L ,testSuite, gitHash, gitBranch, Integer.toString(build.number));
+
+                Long testRunId;
+
+                Gson gson = new Gson();
+
+                System.out.println(gson.toJson(testRun));
+                testRunId = owlHttpClient.createTestRun(gson.toJson(testRun));
+
+                String[] files = getResultFiles(getFiles());
+
+                for (String file : files) {
+                    File xmlFile = new File(file);
+                    owlHttpClient.uploadXml(xmlFile, testRunId);
+                }
+
+
+                OwlReporterBuildAction buildAction = new OwlReporterBuildAction(build, getOwlUrl(), testRunId);
+                build.addAction(buildAction);
+
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
-
-        OwlReporterBuildAction buildAction = new OwlReporterBuildAction(build, getOwlUrl(), testRunId);
-        build.addAction(buildAction);
 
         return true;
     }
 
-    public String[] getResultFiles(String path) {
+    private String[] getResultFiles(String path) {
         DirectoryScanner scanner = new DirectoryScanner();
 
         scanner.setIncludes(new String[]{path});
@@ -174,15 +182,10 @@ public class OwlReporterPublisher extends Recorder {
             return FormValidation.ok();
         }
 
-        public FormValidation doCheckSuiteId(@QueryParameter String value)
+        public FormValidation doCheckSuiteName(@QueryParameter String value)
                 throws IOException, ServletException {
             if (value.length() == 0)
                 return FormValidation.error("Please set a suite ID");
-            try {
-                Long.parseLong(value);
-            } catch (Exception e) {
-                return FormValidation.error("Please enter a valid ID");
-            }
             return FormValidation.ok();
         }
 
