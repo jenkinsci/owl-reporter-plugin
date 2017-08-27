@@ -185,7 +185,7 @@ public class OwlReporterPublisher extends Recorder {
         public FormValidation doCheckSuiteName(@QueryParameter String value)
                 throws IOException, ServletException {
             if (value.length() == 0)
-                return FormValidation.error("Please set a suite ID");
+                return FormValidation.error("Please set a suite name");
             return FormValidation.ok();
         }
 

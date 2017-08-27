@@ -19,7 +19,7 @@ public class OwlHttpClient {
     private OkHttpClient client;
 
     private final static String TEST_RUNS = "/api/v1/test-runs";
-    private final static String TEST_SUITES = "api/v1/test-suites";
+    private final static String TEST_SUITES = "/api/v1/test-suites";
     private final static String UPLOAD_XML = "/api/v1/test-runs/%d/test-cases/junit-xml-report";
 
     public OwlHttpClient(String owlUrl) {
