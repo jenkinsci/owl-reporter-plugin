@@ -2,13 +2,14 @@ package com.atlantbh.jenkins.owlReporter;
 
 import hudson.model.AbstractBuild;
 import hudson.model.Action;
+import hudson.model.Run;
 
 public class OwlReporterBuildAction implements Action {
     private final static String DISPLAY_NAME = "Owl report";
     private final static String ICON_FILE_NAME = "/plugin/owlReporter/img/owl.png";
     private final static String TEST_RUN_URI = "/test-runs/%d/test-cases";
 
-    private AbstractBuild<?, ?> build;
+    private Run<?, ?> build;
     private String owlUrl;
 
     public String getOwlUrl() {
@@ -36,11 +37,11 @@ public class OwlReporterBuildAction implements Action {
         return owlUrl + String.format(TEST_RUN_URI, testRunId);
     }
 
-    public AbstractBuild<?, ?> getBuild() {
+    public Run<?, ?> getBuild() {
         return build;
     }
 
-    OwlReporterBuildAction(final AbstractBuild<?, ?> build, String owlUrl, Long testRunId)
+    OwlReporterBuildAction(final Run<?, ?> build, String owlUrl, Long testRunId)
     {
         this.build = build;
         this.owlUrl = owlUrl;

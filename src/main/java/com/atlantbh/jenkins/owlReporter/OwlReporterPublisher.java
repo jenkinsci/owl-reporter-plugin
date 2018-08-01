@@ -3,17 +3,21 @@ import com.atlantbh.jenkins.owlReporter.model.TestRun;
 import com.atlantbh.jenkins.owlReporter.model.TestSuite;
 import com.atlantbh.jenkins.owlReporter.utils.OwlHttpClient;
 import com.google.gson.Gson;
+import hudson.FilePath;
 import hudson.Launcher;
 import hudson.Extension;
 import hudson.model.*;
 import hudson.tasks.*;
 import hudson.util.FormValidation;
+import jenkins.tasks.SimpleBuildStep;
 import org.apache.tools.ant.DirectoryScanner;
 import net.sf.json.JSONObject;
+import org.jenkinsci.Symbol;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.QueryParameter;
 
+import javax.annotation.Nonnull;
 import javax.servlet.ServletException;
 import java.io.File;
 import java.io.IOException;
@@ -34,7 +38,7 @@ import java.io.IOException;
  *
  * @author Kohsuke Kawaguchi
  */
-public class OwlReporterPublisher extends Recorder {
+public class OwlReporterPublisher extends Recorder implements SimpleBuildStep {
     private final static String GIT_COMMIT_ENV = "GIT_COMMIT";
     private final static String GIT_BRANCH_ENV = "GIT_BRANCH";
 
@@ -64,7 +68,7 @@ public class OwlReporterPublisher extends Recorder {
     }
 
     @Override
-    public boolean perform(AbstractBuild build, Launcher launcher, BuildListener listener) {
+    public void perform(@Nonnull Run<?, ?> build, @Nonnull FilePath filePath, @Nonnull Launcher launcher, @Nonnull TaskListener listener) throws InterruptedException, IOException {
         OwlHttpClient owlHttpClient = new OwlHttpClient(getOwlUrl());
         try {
             Long suiteId = owlHttpClient.getTestSuiteId(getSuiteName());
@@ -108,8 +112,6 @@ public class OwlReporterPublisher extends Recorder {
         } catch (IOException e) {
             e.printStackTrace();
         }
-
-        return true;
     }
 
     private String[] getResultFiles(String path) {
@@ -145,6 +147,7 @@ public class OwlReporterPublisher extends Recorder {
      * for the actual HTML fragment for the configuration screen.
      */
     @Extension // This indicates to Jenkins that this is an implementation of an extension point.
+    @Symbol("owl")
     public static final class DescriptorImpl extends BuildStepDescriptor<Publisher> {
         /**
          * To persist global configuration information,
